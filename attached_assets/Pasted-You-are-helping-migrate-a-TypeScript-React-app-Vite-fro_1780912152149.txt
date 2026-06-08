@@ -1,0 +1,211 @@
+You are helping migrate a TypeScript/React app (Vite) from schema V0 to V2.
+
+CONTEXT:
+- src/types/project.ts has already been replaced with the new V2 schema. DO NOT modify this file.
+- The old schema exported: Project, ProjectLinks, ProjectCT, ProjectScores, ProjectStatus, PlayStatus, Priority, Verdict, computeTotal
+- The new schema exports: MeridioProject, Layer, ProjectState, PlayType, TimingWindow, ProjectEvent, CompletionType, and utility functions
+- Running `npm run typecheck` currently shows 62 errors in 11 files because UI files still import old V0 types
+
+YOUR GOAL: Make typecheck pass with 0 errors. Nothing more.
+
+STRICT RULES:
+- DO NOT modify src/types/project.ts under any circumstances
+- DO NOT create compatibility layers, type aliases, or re-exports of old V0 types
+- DO NOT rebuild any UI — stub all pages with minimal placeholder components
+- DO NOT add new features or UI logic
+- DO NOT create new files except where explicitly instructed
+
+EXECUTE THESE CHANGES EXACTLY:
+
+--- FILE 1: src/types.ts ---
+Replace entire file contents with:
+
+// V2 re-export barrel
+export type {
+  MeridioProject,
+  Layer,
+  ProjectState,
+  PlayType,
+  TimingWindow,
+  AlertThreshold,
+  WindowType,
+  ProjectEvent,
+  EventType,
+  EventSource,
+  CompletionType,
+  UrgencyLevel,
+  UrgencyGroup,
+  LayerDefinition,
+  TransitionRule,
+  TransitionRisk,
+  TransitionValidation,
+  LegacyProjectData,
+  NFTWLTemplate,
+  FastPlayTemplate,
+  ProperProjectTemplate,
+  TechStartupTemplate,
+  TemplateData,
+} from './types/project';
+
+export {
+  computeUrgencyLevel,
+  computeIsStale,
+  computeUrgencyGroup,
+  STALE_THRESHOLDS_DAYS,
+  DEFAULT_STATE_PER_LAYER,
+  LAYER_DEFINITIONS,
+  TRANSITION_RULES,
+  validateTransition,
+  getTransitionRule,
+  createLayerTransitionEvent,
+  appendEvent,
+  loadProjectsFromStorage,
+  saveProjectsToStorage,
+  detectSchemaVersion,
+  migrateV0ToV1,
+  migrateAllProjects,
+  STORAGE_KEYS,
+} from './types/project';
+
+--- FILE 2: src/utils/storage.ts ---
+Replace entire file contents with:
+
+export {
+  loadProjectsFromStorage,
+  saveProjectsToStorage,
+  STORAGE_KEYS,
+} from '../types/project';
+
+--- FILE 3: src/lib/storage.ts ---
+Replace entire file contents with:
+
+import type { MeridioProject } from '../types/project';
+import { loadProjectsFromStorage, saveProjectsToStorage } from '../types/project';
+
+export function getProjects(): MeridioProject[] {
+  return loadProjectsFromStorage();
+}
+
+export function setProjects(projects: MeridioProject[]): void {
+  saveProjectsToStorage(projects);
+}
+
+export function getProjectById(id: string): MeridioProject | undefined {
+  return getProjects().find(p => p.id === id);
+}
+
+export function upsertProject(project: MeridioProject): void {
+  const projects = getProjects();
+  const index = projects.findIndex(p => p.id === project.id);
+  if (index >= 0) {
+    projects[index] = project;
+  } else {
+    projects.push(project);
+  }
+  setProjects(projects);
+}
+
+export function deleteProject(id: string): void {
+  setProjects(getProjects().filter(p => p.id !== id));
+}
+
+--- FILE 4: src/lib/projectFactory.ts ---
+Replace entire file contents with:
+
+import type { MeridioProject, PlayType, Layer } from '../types/project';
+import { DEFAULT_STATE_PER_LAYER } from '../types/project';
+
+export function createProject(
+  name: string,
+  playType: PlayType = 'Other',
+  layer: Layer = 'RAW'
+): MeridioProject {
+  const now = new Date().toISOString();
+  const id = crypto.randomUUID();
+  return {
+    id,
+    schemaVersion: 1,
+    name,
+    chain: '',
+    playType,
+    layer,
+    state: DEFAULT_STATE_PER_LAYER[layer]!,
+    convictionNotes: '',
+    lastInteractionAt: now,
+    events: [{
+      id: `${id}-created`,
+      timestamp: now,
+      type: 'CREATED',
+      source: 'RESEARCHER',
+    }],
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+--- FILE 5: src/lib/exportImport.ts ---
+Replace entire file contents with:
+
+import type { MeridioProject } from '../types/project';
+import { loadProjectsFromStorage, saveProjectsToStorage } from '../types/project';
+
+export function exportProjects(): string {
+  const projects = loadProjectsFromStorage();
+  return JSON.stringify(projects, null, 2);
+}
+
+export function importProjects(jsonString: string): { success: boolean; count: number; error?: string } {
+  try {
+    const data = JSON.parse(jsonString);
+    if (!Array.isArray(data)) return { success: false, count: 0, error: 'Invalid format' };
+    saveProjectsToStorage(data as MeridioProject[]);
+    return { success: true, count: data.length };
+  } catch (e) {
+    return { success: false, count: 0, error: String(e) };
+  }
+}
+
+--- FILE 6: src/components/ScoreInput.tsx ---
+DELETE this file entirely. It belongs to the V0 scoring system which no longer exists.
+
+--- FILE 7: src/pages/Dashboard.tsx ---
+Replace entire file contents with this stub:
+
+import React from 'react';
+export default function Dashboard() {
+  return <div style={{ padding: 24 }}>Dashboard — V2 rebuild pending</div>;
+}
+
+--- FILE 8: src/pages/AddProject.tsx ---
+Replace entire file contents with this stub:
+
+import React from 'react';
+export default function AddProject() {
+  return <div style={{ padding: 24 }}>Add Project — V2 rebuild pending</div>;
+}
+
+--- FILE 9: src/pages/DetailProject.tsx ---
+Replace entire file contents with this stub:
+
+import React from 'react';
+export default function DetailProject() {
+  return <div style={{ padding: 24 }}>Detail Project — V2 rebuild pending</div>;
+}
+
+--- FILE 10: src/pages/EditProject.tsx ---
+Replace entire file contents with this stub:
+
+import React from 'react';
+export default function EditProject() {
+  return <div style={{ padding: 24 }}>Edit Project — V2 rebuild pending</div>;
+}
+
+--- FILE 11: src/components/ui/command.tsx ---
+Find any import that references old V0 types (Project, ProjectStatus, PlayStatus, Priority, Verdict, ProjectScores, computeTotal) and remove those imports. If the file uses those types in its logic, replace with a no-op or remove the affected logic entirely.
+
+--- AFTER ALL FILE CHANGES ---
+Run: npm run typecheck
+If errors remain, fix them by removing references to old V0 types — never by adding compatibility aliases.
+Run: npm run build
+If build succeeds, run: git add -A && git commit -m "phase-0: V0 to V2 migration complete, UI stubs in place"
+Report the final typecheck and build result.

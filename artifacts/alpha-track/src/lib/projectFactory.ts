@@ -1,50 +1,30 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { Project } from '../types/project';
+import type { MeridioProject, PlayType, Layer } from '../types/project';
+import { DEFAULT_STATE_PER_LAYER } from '../types/project';
 
-export function createEmptyProject(): Project {
+export function createProject(
+  name: string,
+  playType: PlayType = 'Other',
+  layer: Layer = 'RAW'
+): MeridioProject {
   const now = new Date().toISOString();
+  const id = crypto.randomUUID();
   return {
-    id:       uuidv4(),
-    name:     "",
-    category: [],
-    chain:    [],
-    stage:    [],
-    findDate: new Date().toISOString().split("T")[0],
-    source:   "",
-    links: {
-      website:  "",
-      twitter:  "",
-      discord:  "",
-      telegram: "",
-      github:   "",
-    },
-    description:    "",
-    narrative:      "",
-    builders:       [],
-    ct: {
-      names: [],
-      count: 0,
-    },
-    conviction:     undefined,
-    scores: {
-      narrative:  0,
-      builder:    0,
-      ctSignal:   0,
-      timing:     0,
-      execution:  0,
-    },
-    decisionNote:   "",
-    biasCheck:      "",
-    playType:       [],
-    playStatus:     "Belum Ada",
-    actionRequired: "",
-    playNotes:      "",
-    status:         "Screening",
-    priority:       "Medium",
-    verdict:        null,
-    timingWindow:   null,
-    createdAt:      now,
-    updatedAt:      now,
-    lastReviewedAt: null,
+    id,
+    schemaVersion: 1,
+    name,
+    chain: '',
+    playType,
+    layer,
+    state: DEFAULT_STATE_PER_LAYER[layer]!,
+    convictionNotes: '',
+    lastInteractionAt: now,
+    events: [{
+      id: `${id}-created`,
+      timestamp: now,
+      type: 'CREATED',
+      source: 'RESEARCHER',
+    }],
+    createdAt: now,
+    updatedAt: now,
   };
 }

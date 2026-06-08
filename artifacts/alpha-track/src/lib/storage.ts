@@ -1,75 +1,29 @@
-import type { Project } from '../types/project';
+import type { MeridioProject } from '../types/project';
+import { loadProjectsFromStorage, saveProjectsToStorage } from '../types/project';
 
-const STORAGE_KEY = 'alphatrack_projects';
-const SCHEMA_VERSION = '2';
-const SCHEMA_VERSION_KEY = 'alphatrack_schema_version';
-
-export function getAllProjects(): Project[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as Project[];
-  } catch (error) {
-    console.error('Meridio: localStorage parse error, returning empty array', error);
-    return [];
-  }
+export function getProjects(): MeridioProject[] {
+  return loadProjectsFromStorage();
 }
 
-export function saveAllProjects(projects: Project[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    localStorage.setItem(
-      STORAGE_KEY + '_autobak',
-      JSON.stringify({
-        savedAt: new Date().toISOString(),
-        projects,
-      })
-    );
-  } catch (error) {
-    console.error('Meridio: failed to save to localStorage', error);
-  }
+export function setProjects(projects: MeridioProject[]): void {
+  saveProjectsToStorage(projects);
 }
 
-export function getProjectById(id: string): Project | null {
-  return getAllProjects().find(p => p.id === id) ?? null;
+export function getProjectById(id: string): MeridioProject | undefined {
+  return getProjects().find(p => p.id === id);
 }
 
-export function saveProject(project: Project): void {
-  const all = getAllProjects();
-  const idx = all.findIndex(p => p.id === project.id);
-  const updated = { ...project, updatedAt: new Date().toISOString() };
-  if (idx >= 0) {
-    all[idx] = updated;
+export function upsertProject(project: MeridioProject): void {
+  const projects = getProjects();
+  const index = projects.findIndex(p => p.id === project.id);
+  if (index >= 0) {
+    projects[index] = project;
   } else {
-    all.push(updated);
+    projects.push(project);
   }
-  saveAllProjects(all);
+  setProjects(projects);
 }
 
 export function deleteProject(id: string): void {
-  const all = getAllProjects().filter(p => p.id !== id);
-  saveAllProjects(all);
-}
-
-export function markAsReviewed(id: string): void {
-  const all = getAllProjects();
-  const idx = all.findIndex(p => p.id === id);
-  if (idx >= 0) {
-    all[idx] = {
-      ...all[idx],
-      lastReviewedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    saveAllProjects(all);
-  }
-}
-
-export function getSchemaVersion(): string {
-  return localStorage.getItem(SCHEMA_VERSION_KEY) ?? '1';
-}
-
-export function setSchemaVersion(): void {
-  localStorage.setItem(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
+  setProjects(getProjects().filter(p => p.id !== id));
 }
