@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ToastProvider } from '@/context/ToastContext';
 import BottomNav from '@/components/BottomNav';
+import CaptureModal from '@/components/CaptureModal';
 import RawLayer from '@/pages/RawLayer';
 import CuratedLayer from '@/pages/CuratedLayer';
 import ActiveLayer from '@/pages/ActiveLayer';
 import ResearchLayer from '@/pages/ResearchLayer';
 import { getProjects } from '@/lib/storage';
 import type { MeridioProject } from '@/types/project';
+import { Plus } from 'lucide-react';
 
 type NavLayer = 'RAW' | 'CURATED' | 'ACTIVE' | 'RESEARCH';
 
@@ -18,12 +20,17 @@ const LAYER_TITLES: Record<NavLayer, string> = {
 };
 
 function Shell() {
-  const [active, setActive] = useState<NavLayer>('RAW');
-  const [projects, setProjects] = useState<MeridioProject[]>([]);
+  const [active, setActive]           = useState<NavLayer>('RAW');
+  const [projects, setProjects]       = useState<MeridioProject[]>([]);
+  const [captureOpen, setCaptureOpen] = useState(false);
 
-  useEffect(() => {
+  const refreshProjects = useCallback(() => {
     setProjects(getProjects());
   }, []);
+
+  useEffect(() => {
+    refreshProjects();
+  }, [refreshProjects]);
 
   const counts = {
     RAW:     projects.filter(p => p.layer === 'RAW').length,
@@ -43,18 +50,37 @@ function Shell() {
         </span>
       </header>
 
-      {/* Content */}
-      <main
-        className="flex-1 overflow-y-auto"
-        style={{ paddingBottom: '4rem' }}
-      >
+      {/* Content — must clear both header (48px) and bottom nav (64px) */}
+      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: '64px' }}>
         {active === 'RAW'      && <RawLayer projects={projects} />}
         {active === 'CURATED'  && <CuratedLayer projects={projects} />}
         {active === 'ACTIVE'   && <ActiveLayer projects={projects} />}
         {active === 'RESEARCH' && <ResearchLayer />}
       </main>
 
+      {/* Floating add button */}
+      <button
+        type="button"
+        aria-label="Add project"
+        onClick={() => setCaptureOpen(true)}
+        className="fixed z-40 rounded-full flex items-center justify-center shadow-lg bg-foreground text-background active:opacity-80 transition-opacity"
+        style={{
+          width: 52,
+          height: 52,
+          bottom: 80,   // 64px nav + 16px gap
+          right: 16,
+        }}
+      >
+        <Plus size={24} strokeWidth={2.5} />
+      </button>
+
       <BottomNav active={active} counts={counts} onSelect={setActive} />
+
+      <CaptureModal
+        isOpen={captureOpen}
+        onClose={() => setCaptureOpen(false)}
+        onProjectSaved={refreshProjects}
+      />
     </div>
   );
 }
